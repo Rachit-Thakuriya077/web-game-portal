@@ -58,23 +58,32 @@
   /* --------------------------------------------------------- view switch */
 
   function showView(name) {
-    Object.values(views).forEach((v) => v.classList.remove("view--active"));
-    views[name].classList.add("view--active");
+  if (!views[name]) return;
 
-    Object.values(navLinks).forEach((l) => l && l.classList.remove("active"));
-    if (navLinks[name]) navLinks[name].classList.add("active");
-
-    if (name === "leaderboard") renderLeaderboard();
-
-    // Tear down the active game whenever we leave the game view — this is
-    // what prevents the render loop from burning frames/memory in the
-    // background once the player navigates elsewhere in the hub.
-    if (name !== "gameView" && activeGame) {
-      activeGame.destroy();
-      activeGame = null;
-      activeGameId = null;
-    }
+  if (name !== "gameView" && activeGame) {
+    activeGame.destroy();
+    activeGame = null;
+    activeGameId = null;
   }
+
+  Object.values(views).forEach((v) => {
+    v.classList.remove("view--active");
+  });
+
+  views[name].classList.add("view--active");
+
+  Object.values(navLinks).forEach((l) => {
+    if (l) l.classList.remove("active");
+  });
+
+  if (navLinks[name]) {
+    navLinks[name].classList.add("active");
+  }
+
+  if (name === "leaderboard") {
+    renderLeaderboard();
+  }
+}
 
   window.addEventListener("hashchange", () => {
     const hash = location.hash.replace("#", "");
@@ -110,24 +119,34 @@
     });
   });
 
-  function openGame(gameId) {
-    const meta = GAME_META[gameId];
-    if (!meta) return;
+ function openGame(gameId) {
+  const meta = GAME_META[gameId];
+  if (!meta) return;
 
-    showView("gameView");
-    activeGameId = gameId;
-    activeGame = meta.create(gameCanvas);
-    activeGame.onScore = (score) => {
-      hudScore.textContent = score;
-    };
-    activeGame.onGameOver = handleGameOver;
-
-    hudScore.textContent = "0";
-    hudBest.textContent = Leaderboard.getBest(gameId);
-
-    resetOverlayForStart(meta);
-    overlay.classList.remove("hidden");
+  // Destroy any currently running game before creating a new one
+  if (activeGame) {
+    activeGame.destroy();
+    activeGame = null;
+    activeGameId = null;
   }
+
+  showView("gameView");
+
+  activeGameId = gameId;
+  activeGame = meta.create(gameCanvas);
+
+  activeGame.onScore = (score) => {
+    hudScore.textContent = score;
+  };
+
+  activeGame.onGameOver = handleGameOver;
+
+  hudScore.textContent = "0";
+  hudBest.textContent = Leaderboard.getBest(gameId);
+
+  resetOverlayForStart(meta);
+  overlay.classList.remove("hidden");
+}
 
   /* --------------------------------------------------------- overlay flow */
 

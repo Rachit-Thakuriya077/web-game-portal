@@ -1,7 +1,7 @@
 # Nebula Arcade — Web Game Portal 
 
 **Tech stack:** HTML5, CSS3, vanilla JavaScript (ES6), Three.js r128 (CDN)
-**Live demo:** _add your Vercel/Netlify/GitHub Pages link here after deploying_
+**Live demo:** https://web-game-portal.vercel.app/it 
 
 ## What this is
 

@@ -22,14 +22,14 @@ class VoidRunnerGame {
     this.ctx = canvas.getContext("2d");
     this.running = false;
     this.disposed = false;
-
+ 
     this.onScore = null;
     this.onGameOver = null;
-
+ 
     this.LANES = 3;
     this._lane = 1; // current player lane index (0..2)
     this._laneVisual = 1; // eased for smooth movement
-
+ 
     this._elapsed = 0;
     this._score = 0;
     this._lastTime = 0;
@@ -37,34 +37,34 @@ class VoidRunnerGame {
     this._spawnInterval = 0.95;
     this._fallSpeed = 220; // px/sec at CSS scale
     this._maxFallSpeed = 620;
-
+ 
     this._poolSize = 18;
     this._pool = [];
-
+ 
     this._keyCooldown = 0;
-
+ 
     this._boundResize = this._onResize.bind(this);
     this._boundVisibility = this._onVisibility.bind(this);
     this._boundKeyDown = this._onKeyDown.bind(this);
     this._boundPointerDown = this._onPointerDown.bind(this);
-
+ 
     this._rafId = null;
-this._boundLoop = this._loop.bind(this);
-
+    this._boundLoop = this._loop.bind(this);
+ 
     this._initPool();
     this._resize();
     this._bindEvents();
     this._drawFrame(0); // paint an initial static frame
   }
-
+ 
   /* ------------------------------------------------------------ setup */
-
+ 
   _initPool() {
     for (let i = 0; i < this._poolSize; i++) {
       this._pool.push({ active: false, lane: 0, y: -100, type: "block", size: 34 });
     }
   }
-
+ 
   _resize() {
     const parent = this.canvas.parentElement;
     this._dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -75,76 +75,87 @@ this._boundLoop = this._loop.bind(this);
     this.ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     this._laneWidth = this._cssW / this.LANES;
   }
-
+ 
   _onResize() {
     this._resize();
   }
-
+ 
   _onVisibility() {
     if (document.hidden) {
       this._wasRunning = this.running;
       this.running = false;
-   } else if (this._wasRunning && !this.disposed) {
-  this.running = true;
-  this._lastTime = performance.now();
-
-  if (this._rafId === null) {
-    this._rafId = requestAnimationFrame(this._boundLoop);
+    } else if (this._wasRunning && !this.disposed) {
+      this.running = true;
+      this._lastTime = performance.now();
+ 
+      if (this._rafId === null) {
+        this._rafId = requestAnimationFrame(this._boundLoop);
+      }
+    }
+    // FIX: this method was missing its closing brace, so everything below
+    // it — _bindEvents, _unbindEvents, _onKeyDown, _onPointerDown,
+    // _moveLane, start, _spawnEntity, _loop, _drawFrame, _gameOver,
+    // destroy — was being parsed as statements nested inside
+    // _onVisibility() instead of as sibling class methods. That's a hard
+    // SyntaxError (the class never closes properly), and even if it had
+    // parsed, none of those methods would exist on the class, so
+    // this._bindEvents() in the constructor above would throw
+    // "not a function" the instant a game is opened.
   }
-}
-
+ 
   _bindEvents() {
     window.addEventListener("resize", this._boundResize);
     document.addEventListener("visibilitychange", this._boundVisibility);
     window.addEventListener("keydown", this._boundKeyDown);
     this.canvas.addEventListener("pointerdown", this._boundPointerDown);
   }
-
+ 
   _unbindEvents() {
     window.removeEventListener("resize", this._boundResize);
     document.removeEventListener("visibilitychange", this._boundVisibility);
     window.removeEventListener("keydown", this._boundKeyDown);
     this.canvas.removeEventListener("pointerdown", this._boundPointerDown);
   }
-
+ 
   _onKeyDown(e) {
     if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") this._moveLane(-1);
     if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") this._moveLane(1);
   }
-
+ 
   _onPointerDown(e) {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     this._moveLane(x < rect.width / 2 ? -1 : 1);
   }
-
+ 
   _moveLane(delta) {
     this._lane = Math.max(0, Math.min(this.LANES - 1, this._lane + delta));
   }
-
+ 
   /* --------------------------------------------------------- game loop */
-
- start() {
-  if (this.disposed) return;
-
-  if (this._rafId !== null) {
-    cancelAnimationFrame(this._rafId);
+ 
+  start() {
+    if (this.disposed) return;
+ 
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId);
+    }
+ 
+    this.running = true;
+    this._elapsed = 0;
+    this._score = 0;
+    this._lane = 1;
+    this._laneVisual = 1;
+    this._spawnTimer = 0;
+    this._spawnInterval = 0.95;
+    this._fallSpeed = 220;
+ 
+    this._pool.forEach((o) => (o.active = false));
+ 
+    this._lastTime = performance.now();
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
-
-  this.running = true;
-  this._elapsed = 0;
-  this._score = 0;
-  this._lane = 1;
-  this._laneVisual = 1;
-  this._spawnTimer = 0;
-  this._spawnInterval = 0.95;
-  this._fallSpeed = 220;
-
-  this._pool.forEach((o) => (o.active = false));
-
-  this._lastTime = performance.now();
-  this._rafId = requestAnimationFrame(this._boundLoop);
-}
+ 
   _spawnEntity() {
     const slot = this._pool.find((o) => !o.active);
     if (!slot) return; // pool exhausted this tick — just skip, nothing leaks
@@ -154,39 +165,39 @@ this._boundLoop = this._loop.bind(this);
     slot.type = Math.random() < 0.22 ? "pickup" : "block";
     slot.size = slot.type === "pickup" ? 20 : 34;
   }
-
+ 
   _loop(now) {
     if (!this.running || this.disposed) return;
     const dt = Math.min((now - this._lastTime) / 1000, 0.05);
     this._lastTime = now;
     this._elapsed += dt;
-
+ 
     // difficulty ramp
     this._fallSpeed = Math.min(this._maxFallSpeed, 220 + this._elapsed * 14);
     this._spawnInterval = Math.max(0.42, 0.95 - this._elapsed * 0.012);
-
+ 
     this._spawnTimer += dt;
     if (this._spawnTimer >= this._spawnInterval) {
       this._spawnTimer = 0;
       this._spawnEntity();
     }
-
+ 
     this._laneVisual += (this._lane - this._laneVisual) * Math.min(1, 12 * dt);
-
+ 
     const playerY = this._cssH - 56;
     const playerX = (this._laneVisual + 0.5) * this._laneWidth;
     const playerRadius = 15;
-
+ 
     for (const o of this._pool) {
       if (!o.active) continue;
       o.y += this._fallSpeed * dt;
-
+ 
       if (o.y - o.size / 2 > this._cssH) {
         o.active = false;
         if (o.type === "block") this._score += 1; // survived a block
         continue;
       }
-
+ 
       // collision check only near player's row
       if (o.y > playerY - 40 && o.y < playerY + 40 && o.lane === this._lane) {
         const dy = Math.abs(o.y - playerY);
@@ -201,21 +212,21 @@ this._boundLoop = this._loop.bind(this);
         }
       }
     }
-
+ 
     if (this.onScore) this.onScore(this._score);
-
+ 
     this._drawFrame(playerX, playerY, playerRadius);
     this._rafId = requestAnimationFrame(this._boundLoop);
   }
-
+ 
   _drawFrame(playerXOverride) {
     const ctx = this.ctx;
     const w = this._cssW, h = this._cssH;
-
+ 
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#05040c";
     ctx.fillRect(0, 0, w, h);
-
+ 
     // lane dividers
     ctx.strokeStyle = "#2e2a4d";
     ctx.lineWidth = 2;
@@ -226,7 +237,7 @@ this._boundLoop = this._loop.bind(this);
       ctx.lineTo(x, h);
       ctx.stroke();
     }
-
+ 
     // entities
     for (const o of this._pool) {
       if (!o.active) continue;
@@ -257,7 +268,7 @@ this._boundLoop = this._loop.bind(this);
       }
     }
     ctx.shadowBlur = 0;
-
+ 
     // player
     const playerY = h - 56;
     const playerX = playerXOverride || (this._laneVisual + 0.5) * this._laneWidth;
@@ -273,24 +284,26 @@ this._boundLoop = this._loop.bind(this);
     ctx.arc(playerX, playerY, 8, 0, Math.PI * 2);
     ctx.fill();
   }
-
+ 
   _gameOver() {
     this.running = false;
     if (this.onGameOver) this.onGameOver(this._score);
   }
-
+ 
   /* ------------------------------------------------------------ cleanup */
-
- destroy() {
-  this.running = false;
-  this.disposed = true;
-
-  if (this._rafId !== null) {
-    cancelAnimationFrame(this._rafId);
-    this._rafId = null;
+ 
+  destroy() {
+    this.running = false;
+    this.disposed = true;
+ 
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId);
+      this._rafId = null;
+    }
+ 
+    this._unbindEvents();
+ 
+    this.ctx.clearRect(0, 0, this._cssW, this._cssH);
   }
-
-  this._unbindEvents();
-
-  this.ctx.clearRect(0, 0, this._cssW, this._cssH);
 }
+ 

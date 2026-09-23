@@ -1,6 +1,6 @@
 /* =========================================================
    NEBULA ARCADE — style.css
-   Design tokens — clean pastel light theme
+   Design tokens — dark, moody arcade theme
    ========================================================= */
 :root {
   --bg-0: #080711;
@@ -49,7 +49,6 @@ body {
   position: relative;
 }
 
-/* ---------- animated background particle canvas ---------- */
 #bg-canvas-wrap {
   position: fixed;
   inset: 0;
@@ -58,7 +57,6 @@ body {
 }
 #bg-canvas { width: 100%; height: 100%; display: block; }
 
-/* ---------- header ---------- */
 .site-header {
   position: sticky;
   top: 0;
@@ -68,6 +66,7 @@ body {
   justify-content: space-between;
   padding: 18px clamp(16px, 4vw, 48px);
   background: rgba(8, 7, 17, 0.75);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
 }
@@ -92,10 +91,9 @@ body {
   border-radius: 999px;
   transition: color 0.2s ease, background 0.2s ease;
 }
-.nav-link:hover { color: var(--text-hi); background: var(--surface); }
+.nav-link:hover { color: var(--text-hi); background: var(--surface-hover); }
 .nav-link.active { color: var(--on-accent); background: var(--accent); font-weight: 600; }
 
-/* ---------- layout / views ---------- */
 main {
   position: relative;
   z-index: 1;
@@ -124,7 +122,6 @@ main {
   line-height: 1.6;
 }
 
-/* ---------- game grid / cards ---------- */
 .game-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -144,6 +141,7 @@ main {
   transform: translateY(-4px);
   box-shadow: var(--shadow-1);
   border-color: var(--accent);
+  background: var(--surface-hover);
 }
 .game-card--locked { cursor: not-allowed; opacity: 0.6; }
 .game-card--locked:hover { transform: none; box-shadow: none; border-color: var(--border); }
@@ -166,7 +164,7 @@ main {
   color: var(--accent-3);
   padding: 4px 9px;
   border-radius: 999px;
-  border: 1px solid rgba(139,233,253,0.3);
+  border: 1px solid rgba(31,154,168,0.35);
 }
 .thumb-tag--muted { color: var(--text-low); border-color: var(--border); }
 
@@ -182,7 +180,6 @@ main {
 }
 .play-cta--disabled { color: var(--text-low); }
 
-/* ---------- buttons ---------- */
 .btn {
   font-family: var(--font-body);
   font-size: 0.88rem;
@@ -200,7 +197,6 @@ main {
 .btn--ghost:hover { color: var(--text-hi); border-color: var(--text-mid); }
 .btn--small { font-size: 0.78rem; padding: 7px 14px; }
 
-/* ---------- game view ---------- */
 .game-toolbar {
   display: flex;
   align-items: center;
@@ -241,6 +237,7 @@ main {
   align-items: center;
   justify-content: center;
   background: rgba(5,4,9,0.72);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   padding: 20px;
   transition: opacity 0.25s ease;
@@ -292,7 +289,6 @@ main {
   text-align: center;
 }
 
-/* ---------- leaderboard tabs ---------- */
 .leaderboard-tabs {
   display: flex;
   gap: 8px;
@@ -314,7 +310,6 @@ main {
 .lb-tab:hover { color: var(--text-hi); border-color: var(--text-mid); }
 .lb-tab.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
-/* ---------- leaderboard ---------- */
 .leaderboard-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -350,7 +345,6 @@ main {
 .leaderboard-score { color: var(--accent-text); font-family: var(--font-display); font-weight: 700; }
 .leaderboard-empty { color: var(--text-low); justify-content: center; }
 
-/* ---------- footer ---------- */
 .site-footer {
   position: relative;
   z-index: 1;
@@ -360,9 +354,6 @@ main {
   padding: 24px 16px 40px;
 }
 
-/* =========================================================
-   RESPONSIVE — mobile phones (no horizontal overflow)
-   ========================================================= */
 @media (max-width: 640px) {
   .site-header { padding: 14px 16px; }
   .brand-text { font-size: 0.95rem; }

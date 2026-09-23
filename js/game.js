@@ -20,30 +20,37 @@ class StellarDriftGame {
     this.canvas = canvas;
     this.running = false;
     this.disposed = false;
-
+ 
     this.onScore = null;   // callback(score:number)
     this.onGameOver = null; // callback(finalScore:number)
-
+ 
     this._elapsed = 0;
     this._score = 0;
     this._lastTime = 0;
-
+ 
     this._shipTargetX = 0;
     this._shipX = 0;
     this._laneHalfWidth = 3.4;
-
+ 
     this._asteroidPool = [];
     this._poolSize = 24;
     this._spawnCursor = 0;
     this._baseSpeed = 9;
     this._speed = this._baseSpeed;
     this._maxSpeed = 22;
-
+ 
     this._keys = { left: false, right: false };
     this._dragging = false;
     this._dragStartX = 0;
     this._dragStartShipX = 0;
-
+ 
+    // FIX: this was referenced later (in start() / _loop()) via
+    // `requestAnimationFrame(this._boundLoop)` but never actually bound —
+    // requestAnimationFrame(undefined) throws. Bind it here, same pattern
+    // as void-runner.js.
+    this._rafId = null;
+    this._boundLoop = this._loop.bind(this);
+ 
     this._boundResize = this._onResize.bind(this);
     this._boundVisibility = this._onVisibility.bind(this);
     this._boundKeyDown = this._onKeyDown.bind(this);
@@ -51,25 +58,25 @@ class StellarDriftGame {
     this._boundPointerDown = this._onPointerDown.bind(this);
     this._boundPointerMove = this._onPointerMove.bind(this);
     this._boundPointerUp = this._onPointerUp.bind(this);
-
+ 
     this._buildScene();
     this._bindEvents();
   }
-
+ 
   /* ---------------------------------------------------------- scene setup */
-
+ 
   _buildScene() {
     const parent = this.canvas.parentElement;
     const w = parent.clientWidth || 1;
     const h = parent.clientHeight || 1;
-
+ 
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0x050409, 10, 55);
-
+ 
     this.camera = new THREE.PerspectiveCamera(62, w / h, 0.1, 100);
     this.camera.position.set(0, 2.6, 7.5);
     this.camera.lookAt(0, 0.5, -10);
-
+ 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -79,13 +86,13 @@ class StellarDriftGame {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setSize(w, h, false);
     this.renderer.setClearColor(0x050409, 1);
-
+ 
     // lights
     const ambient = new THREE.AmbientLight(0x4a3f7a, 0.9);
     const point = new THREE.PointLight(0xff8a5b, 1.1, 40);
     point.position.set(2, 6, 4);
     this.scene.add(ambient, point);
-
+ 
     // ship
     const shipGeo = new THREE.ConeGeometry(0.45, 1.1, 4);
     const shipMat = new THREE.MeshStandardMaterial({
@@ -99,7 +106,7 @@ class StellarDriftGame {
     this.ship.rotation.z = Math.PI / 4;
     this.ship.position.set(0, 0.4, 5.6);
     this.scene.add(this.ship);
-
+ 
     // lane guide rails (purely decorative, cheap line geometry)
     const railMat = new THREE.LineBasicMaterial({ color: 0x2e2a4d });
     [-this._laneHalfWidth, this._laneHalfWidth].forEach((x) => {
@@ -107,7 +114,7 @@ class StellarDriftGame {
       const geo = new THREE.BufferGeometry().setFromPoints(pts);
       this.scene.add(new THREE.Line(geo, railMat));
     });
-
+ 
     // shared asteroid geometry/material (object pool)
     this._asteroidGeo = new THREE.IcosahedronGeometry(0.55, 0);
     this._asteroidMats = [
@@ -115,7 +122,7 @@ class StellarDriftGame {
       new THREE.MeshStandardMaterial({ color: 0x8be9fd, flatShading: true, roughness: 0.7 }),
       new THREE.MeshStandardMaterial({ color: 0x5b4bff, flatShading: true, roughness: 0.7 }),
     ];
-
+ 
     for (let i = 0; i < this._poolSize; i++) {
       const mat = this._asteroidMats[i % this._asteroidMats.length];
       const mesh = new THREE.Mesh(this._asteroidGeo, mat);
@@ -125,7 +132,7 @@ class StellarDriftGame {
       this.scene.add(mesh);
       this._asteroidPool.push(mesh);
     }
-
+ 
     // background starfield (bonus creative graphics), single BufferGeometry
     const starCount = 300;
     const positions = new Float32Array(starCount * 3);
@@ -139,11 +146,11 @@ class StellarDriftGame {
     const starMat = new THREE.PointsMaterial({ color: 0xcfc9ff, size: 0.06, transparent: true, opacity: 0.8 });
     this._stars = new THREE.Points(starGeo, starMat);
     this.scene.add(this._stars);
-
+ 
     this._resetAsteroids();
     this.renderer.render(this.scene, this.camera);
   }
-
+ 
   _resetAsteroids() {
     for (let i = 0; i < this._poolSize; i++) {
       const mesh = this._asteroidPool[i];
@@ -153,7 +160,7 @@ class StellarDriftGame {
     }
     this._spawnCursor = 0;
   }
-
+ 
   _recycleAsteroid(mesh, z) {
     mesh.position.set(
       (Math.random() - 0.5) * this._laneHalfWidth * 2 * 0.85,
@@ -163,9 +170,9 @@ class StellarDriftGame {
     const s = 0.7 + Math.random() * 0.9;
     mesh.scale.setScalar(s);
   }
-
+ 
   /* -------------------------------------------------------------- events */
-
+ 
   _bindEvents() {
     window.addEventListener("resize", this._boundResize);
     document.addEventListener("visibilitychange", this._boundVisibility);
@@ -175,7 +182,7 @@ class StellarDriftGame {
     window.addEventListener("pointermove", this._boundPointerMove);
     window.addEventListener("pointerup", this._boundPointerUp);
   }
-
+ 
   _unbindEvents() {
     window.removeEventListener("resize", this._boundResize);
     document.removeEventListener("visibilitychange", this._boundVisibility);
@@ -185,7 +192,7 @@ class StellarDriftGame {
     window.removeEventListener("pointermove", this._boundPointerMove);
     window.removeEventListener("pointerup", this._boundPointerUp);
   }
-
+ 
   _onResize() {
     const parent = this.canvas.parentElement;
     const w = parent.clientWidth || 1;
@@ -194,7 +201,7 @@ class StellarDriftGame {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h, false);
   }
-
+ 
   _onVisibility() {
     if (document.hidden) {
       this._wasRunningBeforeHide = this.running;
@@ -202,10 +209,10 @@ class StellarDriftGame {
     } else if (this._wasRunningBeforeHide) {
       this.running = true;
       this._lastTime = performance.now();
-      requestAnimationFrame(this._loop.bind(this));
+      this._rafId = requestAnimationFrame(this._boundLoop);
     }
   }
-
+ 
   _onKeyDown(e) {
     if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") this._keys.left = true;
     if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") this._keys.right = true;
@@ -214,7 +221,7 @@ class StellarDriftGame {
     if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") this._keys.left = false;
     if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") this._keys.right = false;
   }
-
+ 
   _onPointerDown(e) {
     this._dragging = true;
     this._dragStartX = e.clientX;
@@ -229,38 +236,48 @@ class StellarDriftGame {
   _onPointerUp() {
     this._dragging = false;
   }
-
+ 
   /* --------------------------------------------------------- game loop */
-
-  if (this._rafId !== null) {
-  cancelAnimationFrame(this._rafId);
-}
-
-this.running = true;
-this._elapsed = 0;
-this._score = 0;
-this._speed = this._baseSpeed;
-this._shipX = 0;
-this._shipTargetX = 0;
-this.ship.position.x = 0;
-
-this._resetAsteroids();
-this._lastTime = performance.now();
-
-this._rafId = requestAnimationFrame(this._boundLoop);
+ 
+  // FIX: this whole block used to sit here as bare statements, outside
+  // any method — invalid inside a class body, and a hard SyntaxError that
+  // breaks the entire file (StellarDriftGame never gets defined, so
+  // main.js's `new StellarDriftGame(canvas)` throws ReferenceError).
+  // Wrapped it in the start() method it was clearly meant to be.
+  start() {
+    if (this.disposed) return;
+ 
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId);
+    }
+ 
+    this.running = true;
+    this._elapsed = 0;
+    this._score = 0;
+    this._speed = this._baseSpeed;
+    this._shipX = 0;
+    this._shipTargetX = 0;
+    this.ship.position.x = 0;
+ 
+    this._resetAsteroids();
+    this._lastTime = performance.now();
+ 
+    this._rafId = requestAnimationFrame(this._boundLoop);
+  }
+ 
   stopRound() {
     this.running = false;
   }
-
+ 
   _loop(now) {
     if (!this.running || this.disposed) return;
     const dt = Math.min((now - this._lastTime) / 1000, 0.05); // clamp to avoid big jumps on tab-back
     this._lastTime = now;
     this._elapsed += dt;
-
+ 
     // difficulty ramp
     this._speed = Math.min(this._maxSpeed, this._baseSpeed + this._elapsed * 0.35);
-
+ 
     // steering
     if (this._keys.left) this._shipTargetX -= 5.5 * dt;
     if (this._keys.right) this._shipTargetX += 5.5 * dt;
@@ -272,19 +289,19 @@ this._rafId = requestAnimationFrame(this._boundLoop);
     this._shipX += (this._shipTargetX - this._shipX) * Math.min(1, 10 * dt);
     this.ship.position.x = this._shipX;
     this.ship.rotation.z = Math.PI / 4 - (this._shipTargetX - this._shipX) * 0.3;
-
+ 
     // move asteroids toward camera, recycle when passed
     for (const mesh of this._asteroidPool) {
       mesh.position.z += this._speed * dt;
       mesh.rotation.x += mesh.userData.rotSpeed * dt;
       mesh.rotation.y += mesh.userData.rotSpeed * 0.7 * dt;
       mesh.visible = true;
-
+ 
       if (mesh.position.z > 8) {
         this._recycleAsteroid(mesh);
         this._score += 1;
       }
-
+ 
       // collision check (only when near the ship's z-plane)
       if (Math.abs(mesh.position.z - this.ship.position.z) < 0.55) {
         const dx = mesh.position.x - this.ship.position.x;
@@ -296,41 +313,43 @@ this._rafId = requestAnimationFrame(this._boundLoop);
         }
       }
     }
-
+ 
     // drift starfield slowly for parallax
     this._stars.position.z += this._speed * 0.15 * dt;
     if (this._stars.position.z > 20) this._stars.position.z = 0;
-
+ 
     if (this.onScore) this.onScore(this._score);
-
+ 
     this.renderer.render(this.scene, this.camera);
     this._rafId = requestAnimationFrame(this._boundLoop);
   }
-
+ 
   _gameOver() {
     this.running = false;
     if (this.onGameOver) this.onGameOver(this._score);
   }
-
+ 
   /* ------------------------------------------------------------ cleanup */
-
+ 
   destroy() {
-  this.running = false;
-  this.disposed = true;
-
-  if (this._rafId !== null) {
-    cancelAnimationFrame(this._rafId);
-    this._rafId = null;
+    this.running = false;
+    this.disposed = true;
+ 
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId);
+      this._rafId = null;
+    }
+ 
+    this._unbindEvents();
+ 
+    this._asteroidPool.forEach((m) => this.scene.remove(m));
+    this._asteroidGeo.dispose();
+    this._asteroidMats.forEach((m) => m.dispose());
+    this.ship.geometry.dispose();
+    this.ship.material.dispose();
+    this._stars.geometry.dispose();
+    this._stars.material.dispose();
+    this.renderer.dispose();
   }
-
-  this._unbindEvents();
-
-  this._asteroidPool.forEach((m) => this.scene.remove(m));
-  this._asteroidGeo.dispose();
-  this._asteroidMats.forEach((m) => m.dispose());
-  this.ship.geometry.dispose();
-  this.ship.material.dispose();
-  this._stars.geometry.dispose();
-  this._stars.material.dispose();
-  this.renderer.dispose();
 }
+ 

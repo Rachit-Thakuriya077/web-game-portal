@@ -3,20 +3,21 @@
    Design tokens — clean pastel light theme
    ========================================================= */
 :root {
-  --bg-0: #f7f5fc;
-  --bg-1: #ffffff;
-  --bg-2: #f0ecfa;
-  --surface: #ffffff;
-  --surface-hover: #f5f1fc;
-  --border: #e6e1f5;
+  --bg-0: #080711;
+  --bg-1: #0f0e1a;
+  --bg-2: #151329;
 
-  --text-hi: #262038;
-  --text-mid: #6b6488;
-  --text-low: #a19bc0;
+  --surface: #11101d;
+  --surface-hover: #19172a;
+  --border: #292640;
+
+  --text-hi: #f5f2ff;
+  --text-mid: #aaa4c8;
+  --text-low: #77718f;
 
   --accent: #ff8066;
   --accent-hi: #ff9c85;
-  --accent-text: #d9502f;
+  --accent-text: #ff8066;
   --accent-2: #7c6cf0;
   --accent-3: #1f9aa8;
   --on-accent: #2c1208;
@@ -25,7 +26,8 @@
   --radius-md: 14px;
   --radius-sm: 8px;
 
-  --shadow-1: 0 10px 30px rgba(90, 70, 140, 0.12);
+  --shadow-1: 0 10px 30px rgba(0, 0, 0, 0.35);
+
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Sora", system-ui, -apple-system, sans-serif;
 }
@@ -65,7 +67,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 18px clamp(16px, 4vw, 48px);
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(8, 7, 17, 0.75);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
 }

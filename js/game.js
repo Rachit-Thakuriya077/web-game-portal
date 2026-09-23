@@ -232,20 +232,22 @@ class StellarDriftGame {
 
   /* --------------------------------------------------------- game loop */
 
-  start() {
-    if (this.disposed) return;
-    this.running = true;
-    this._elapsed = 0;
-    this._score = 0;
-    this._speed = this._baseSpeed;
-    this._shipX = 0;
-    this._shipTargetX = 0;
-    this.ship.position.x = 0;
-    this._resetAsteroids();
-    this._lastTime = performance.now();
-    requestAnimationFrame(this._loop.bind(this));
-  }
+  if (this._rafId !== null) {
+  cancelAnimationFrame(this._rafId);
+}
 
+this.running = true;
+this._elapsed = 0;
+this._score = 0;
+this._speed = this._baseSpeed;
+this._shipX = 0;
+this._shipTargetX = 0;
+this.ship.position.x = 0;
+
+this._resetAsteroids();
+this._lastTime = performance.now();
+
+this._rafId = requestAnimationFrame(this._boundLoop);
   stopRound() {
     this.running = false;
   }
@@ -302,7 +304,7 @@ class StellarDriftGame {
     if (this.onScore) this.onScore(this._score);
 
     this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(this._loop.bind(this));
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
 
   _gameOver() {
@@ -313,17 +315,22 @@ class StellarDriftGame {
   /* ------------------------------------------------------------ cleanup */
 
   destroy() {
-    this.running = false;
-    this.disposed = true;
-    this._unbindEvents();
+  this.running = false;
+  this.disposed = true;
 
-    this._asteroidPool.forEach((m) => this.scene.remove(m));
-    this._asteroidGeo.dispose();
-    this._asteroidMats.forEach((m) => m.dispose());
-    this.ship.geometry.dispose();
-    this.ship.material.dispose();
-    this._stars.geometry.dispose();
-    this._stars.material.dispose();
-    this.renderer.dispose();
+  if (this._rafId !== null) {
+    cancelAnimationFrame(this._rafId);
+    this._rafId = null;
   }
+
+  this._unbindEvents();
+
+  this._asteroidPool.forEach((m) => this.scene.remove(m));
+  this._asteroidGeo.dispose();
+  this._asteroidMats.forEach((m) => m.dispose());
+  this.ship.geometry.dispose();
+  this.ship.material.dispose();
+  this._stars.geometry.dispose();
+  this._stars.material.dispose();
+  this.renderer.dispose();
 }

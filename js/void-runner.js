@@ -48,6 +48,9 @@ class VoidRunnerGame {
     this._boundKeyDown = this._onKeyDown.bind(this);
     this._boundPointerDown = this._onPointerDown.bind(this);
 
+    this._rafId = null;
+this._boundLoop = this._loop.bind(this);
+
     this._initPool();
     this._resize();
     this._bindEvents();
@@ -81,12 +84,14 @@ class VoidRunnerGame {
     if (document.hidden) {
       this._wasRunning = this.running;
       this.running = false;
-    } else if (this._wasRunning) {
-      this.running = true;
-      this._lastTime = performance.now();
-      requestAnimationFrame(this._loop.bind(this));
-    }
+   } else if (this._wasRunning && !this.disposed) {
+  this.running = true;
+  this._lastTime = performance.now();
+
+  if (this._rafId === null) {
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
+}
 
   _bindEvents() {
     window.addEventListener("resize", this._boundResize);
@@ -119,21 +124,27 @@ class VoidRunnerGame {
 
   /* --------------------------------------------------------- game loop */
 
-  start() {
-    if (this.disposed) return;
-    this.running = true;
-    this._elapsed = 0;
-    this._score = 0;
-    this._lane = 1;
-    this._laneVisual = 1;
-    this._spawnTimer = 0;
-    this._spawnInterval = 0.95;
-    this._fallSpeed = 220;
-    this._pool.forEach((o) => (o.active = false));
-    this._lastTime = performance.now();
-    requestAnimationFrame(this._loop.bind(this));
+ start() {
+  if (this.disposed) return;
+
+  if (this._rafId !== null) {
+    cancelAnimationFrame(this._rafId);
   }
 
+  this.running = true;
+  this._elapsed = 0;
+  this._score = 0;
+  this._lane = 1;
+  this._laneVisual = 1;
+  this._spawnTimer = 0;
+  this._spawnInterval = 0.95;
+  this._fallSpeed = 220;
+
+  this._pool.forEach((o) => (o.active = false));
+
+  this._lastTime = performance.now();
+  this._rafId = requestAnimationFrame(this._boundLoop);
+}
   _spawnEntity() {
     const slot = this._pool.find((o) => !o.active);
     if (!slot) return; // pool exhausted this tick — just skip, nothing leaks
@@ -194,7 +205,7 @@ class VoidRunnerGame {
     if (this.onScore) this.onScore(this._score);
 
     this._drawFrame(playerX, playerY, playerRadius);
-    requestAnimationFrame(this._loop.bind(this));
+    this._rafId = requestAnimationFrame(this._boundLoop);
   }
 
   _drawFrame(playerXOverride) {
@@ -270,13 +281,16 @@ class VoidRunnerGame {
 
   /* ------------------------------------------------------------ cleanup */
 
-  destroy() {
-    this.running = false;
-    this.disposed = true;
-    this._unbindEvents();
-    // Canvas 2D holds no GPU buffers/geometries to dispose beyond the
-    // context itself, which is released when the element is garbage
-    // collected; clearing it avoids holding a stale painted frame.
-    this.ctx.clearRect(0, 0, this._cssW, this._cssH);
+ destroy() {
+  this.running = false;
+  this.disposed = true;
+
+  if (this._rafId !== null) {
+    cancelAnimationFrame(this._rafId);
+    this._rafId = null;
   }
+
+  this._unbindEvents();
+
+  this.ctx.clearRect(0, 0, this._cssW, this._cssH);
 }
